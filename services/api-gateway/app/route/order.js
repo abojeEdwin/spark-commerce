@@ -1,6 +1,7 @@
 const { v4: uuid4 } = require('uuid')
 const redis = require('../shared/redis')
 const { getChannel } = require('../shared/rabbitmq')
+const OrderStatus = require('../data/enum/OrderStatus')
 
 async function orderRoutes(fastify) {
     fastify.post('/orders', async (request, reply) => {
@@ -14,10 +15,17 @@ async function orderRoutes(fastify) {
         const payload = {
             orderId,
             userId: request.body.userId,
-            amount: request.body.amount
+            item: request.body.item,
+            quantity: request.body.quantity || 1,
+            amount: request.body.amount,
+            currency: request.body.currency || 'USD',
+            status: OrderStatus.PENDING,
+            createdAt: new Date().toISOString(),
+            shippingAddress: request.body.shippingAddress,
+            paymentMethod: request.body.paymentMethod
         }
 
-        await redis.set(`order:${orderId}`, 'CREATED', 'EX', 900)
+        await redis.set(`order:${orderId}`, OrderStatus.PENDING, 'EX', 900)
 
         channel.publish(
             'orders.exchange',
@@ -26,7 +34,7 @@ async function orderRoutes(fastify) {
             { persistent: true }
         )
 
-        return reply.code(202).send({ orderId, status: 'CREATED' })
+        return reply.code(202).send({ orderId, status: OrderStatus.PENDING })
     })
 }
 
