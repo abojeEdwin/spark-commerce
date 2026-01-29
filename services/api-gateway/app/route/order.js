@@ -20,8 +20,7 @@ async function orderRoutes(fastify) {
             amount: request.body.amount,
             currency: request.body.currency || 'USD',
             status: OrderStatus.PENDING,
-            createdAt: new Date().toISOString(),
-            shippingAddress: request.body.shippingAddress,
+            createdAt: new Date().toISOString(), shippingAddress: request.body.shippingAddress,
             paymentMethod: request.body.paymentMethod
         }
 

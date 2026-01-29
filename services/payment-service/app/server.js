@@ -1,43 +1,32 @@
-const { connectRabbitMQ, getChannel } = require('./shared/rabbitmq')
+const amqp = require('amqplib')
+const consumer = require('./consumer')
 const logger = require('./shared/logger')('payment-service')
 
 async function start() {
-    await connectRabbitMQ()
-    const channel = getChannel()
-    logger.info('RabbitMQ connected')
+    try {
+        const connection = await amqp.connect(process.env.RABBITMQ_URL || 'amqp://guest:guest@rabbitmq:5672')
+        const channel = await connection.createChannel()
 
-    await channel.assertExchange('orders.exchange', 'topic', { durable: true })
-    await channel.assertExchange('orders.retry.exchange', 'direct', { durable: true })
-    await channel.assertExchange('orders.dlx.exchange', 'direct', { durable: true })
+        await channel.assertExchange('orders.exchange', 'topic', { durable: true })
+        await channel.assertExchange('orders.dlx.exchange', 'topic', { durable: true })
+        await channel.assertExchange('orders.retry.exchange', 'topic', { durable: true })
 
+        await channel.assertQueue('payment.queue', {
+            durable: true
+        })
 
-    await channel.assertQueue('payment.queue', {
-        durable: true,
-        deadLetterExchange: 'orders.retry.exchange',
-        deadLetterRoutingKey: 'payment.retry'
-    })
+        await channel.bindQueue('payment.queue', 'orders.exchange', 'order.created')
 
+        logger.info('Payment service connected to RabbitMQ')
 
-    await channel.assertQueue('payment.retry.queue', {
-        durable: true,
-        messageTtl: 5000, // 5 seconds
-        deadLetterExchange: 'orders.exchange',
-        deadLetterRoutingKey: 'order.created'
-    })
+        consumer(channel)
 
-
-    await channel.assertQueue('payment.dlq', { durable: true })
-
-
-    await channel.bindQueue('payment.queue', 'orders.exchange', 'order.created')
-    await channel.bindQueue('payment.retry.queue', 'orders.retry.exchange', 'payment.retry')
-    await channel.bindQueue('payment.dlq', 'orders.dlx.exchange', 'payment.dlq')
-
-    channel.prefetch(5)
-
-    logger.info('Payment service ready')
-    require('./consumer')(channel)
+    } catch (err) {
+        logger.error(err, 'Failed to start payment service')
+        setTimeout(start, 5000)
+    }
 }
+
 
 start().catch(err => {
     logger.error(err)
