@@ -14,7 +14,6 @@ async function start() {
         await channel.assertQueue('payment.queue', {
             durable: true
         })
-
         await channel.bindQueue('payment.queue', 'orders.exchange', 'order.created')
 
         logger.info('Payment service connected to RabbitMQ')
