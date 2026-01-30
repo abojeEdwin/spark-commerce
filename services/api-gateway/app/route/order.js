@@ -5,6 +5,8 @@ const OrderStatus = require('../data/enum/OrderStatus')
 
 //Producer
 async function orderRoutes(fastify) {
+    console.log('Registering order routes...')
+
     fastify.post('/orders', async (request, reply) => {
         const orderId = uuid4()
         const channel = getChannel()
@@ -25,8 +27,7 @@ async function orderRoutes(fastify) {
             shippingAddress: request.body.shippingAddress,
             paymentMethod: request.body.paymentMethod
         }
-
-        await redis.set(`order:${orderId}`, payload, 'EX', 900)
+        await redis.set(`order:${orderId}`, JSON.stringify(payload), 'EX', 900)
 
         channel.publish(
             'orders.exchange',
@@ -34,32 +35,35 @@ async function orderRoutes(fastify) {
             Buffer.from(JSON.stringify(payload)),
             { persistent: true }
         )
-
         return reply.code(202).send({ orderId, status: OrderStatus.PENDING })
     })
 
-    fastify.get('/orders/:orderId', async (request, reply) => {
-        const { orderId } = request.params
-        const order = await redis.get(`order:${orderId}`)
-
-        if (!order) {
-            return reply.code(404).send({ error: 'Order not found or expired' })
-        }
-
-        return { orderId, status: JSON.parse(order).status }
-    })
-
     fastify.get('/orders', async (request, reply) => {
+        console.log('GET /orders called')
         const keys = await redis.keys('order:*')
         const orders = []
 
         for (const key of keys) {
             const orderId = key.split(':')[1]
-            const status = await redis.get(key)
-            orders.push({ orderId, status })
+            const orderData = await redis.get(key)
+            if (orderData) {
+                 const order = JSON.parse(orderData)
+                 orders.push(order)
+            }
+        }
+        return orders
+    })
+
+    fastify.get('/orders/:orderId', async (request, reply) => {
+        const { orderId } = request.params
+        const orderData = await redis.get(`order:${orderId}`)
+
+        if (!orderData) {
+            return reply.code(404).send({ error: 'Order not found or expired' })
         }
 
-        return orders
+        const order = JSON.parse(orderData)
+        return { orderId, status: order.status, order }
     })
 }
 

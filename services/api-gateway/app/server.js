@@ -8,6 +8,14 @@ const fastify = require('fastify')({
 fastify.get('/health', async () => {
     return { status: 'ok', service: 'api-gateway' }
 })
+
+fastify.register(require('./route/order'))
+
+fastify.addHook('onReady', async () => {
+    await connectRabbitMQ()
+    fastify.log.info('RabbitMQ connected')
+})
+
 const start = async () => {
     try {
         await fastify.listen({ port: 3000, host: '0.0.0.0' })
@@ -17,10 +25,3 @@ const start = async () => {
     }
 }
 start()
-
-fastify.addHook('onReady', async () => {
-    await connectRabbitMQ()
-    fastify.log.info('RabbitMQ connected')
-})
-
-fastify.register(require('./route/order'))
