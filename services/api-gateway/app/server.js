@@ -2,7 +2,16 @@ const { connectRabbitMQ } = require('./shared/rabbitmq')
 
 
 const fastify = require('fastify')({
-    logger: true
+    logger: true,
+    trustProxy: true 
+})
+
+fastify.register(require('@fastify/helmet'))
+
+
+fastify.register(require('@fastify/rate-limit'), {
+    max: 100,
+    timeWindow: '1 minute'
 })
 
 fastify.get('/health', async () => {

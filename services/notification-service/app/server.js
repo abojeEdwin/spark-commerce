@@ -5,6 +5,7 @@ async function start() {
     await connectRabbitMQ()
     const channel = getChannel()
 
+
     await channel.assertExchange('notifications.exchange', 'fanout', {
         durable: true
     })
@@ -20,7 +21,6 @@ async function start() {
             'x-dead-letter-routing-key': 'email.dlq'
         }
     })
-    
 
     await channel.bindQueue(emailQueue.queue, 'notifications.exchange', '')
     await channel.bindQueue(emailQueue.queue, 'orders.exchange', 'order.paid')
@@ -37,14 +37,9 @@ async function start() {
     })
     await channel.bindQueue(emailRetryQueue.queue, 'notifications.retry.exchange', 'email.retry')
 
-
-    const auditQueue = await channel.assertQueue('audit.queue', { durable: true })
-    await channel.bindQueue(auditQueue.queue, 'notifications.exchange', '')
-
     channel.prefetch(5)
 
     require('./email.consumer')(channel)
-    require('./audit.consumer')(channel)
 
     logger.info('Notification service ready')
 }

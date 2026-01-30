@@ -7,7 +7,25 @@ const OrderStatus = require('../data/enum/OrderStatus')
 async function orderRoutes(fastify) {
     console.log('Registering order routes...')
 
-    fastify.post('/orders', async (request, reply) => {
+    const createOrderSchema = {
+        schema: {
+            body: {
+                type: 'object',
+                required: ['userId', 'item', 'amount', 'shippingAddress', 'paymentMethod'],
+                properties: {
+                    userId: { type: 'string', minLength: 1 },
+                    item: { type: 'string', minLength: 1 },
+                    amount: { type: 'number', minimum: 0.01 },
+                    quantity: { type: 'integer', minimum: 1, default: 1 },
+                    currency: { type: 'string', minLength: 3, maxLength: 3, default: 'USD' },
+                    shippingAddress: { type: 'string', minLength: 5 },
+                    paymentMethod: { type: 'string', minLength: 1 }
+                }
+            }
+        }
+    }
+
+    fastify.post('/orders', createOrderSchema, async (request, reply) => {
         try {
             const orderId = uuid4()
             const correlationId = uuid4()
@@ -21,9 +39,9 @@ async function orderRoutes(fastify) {
                 orderId,
                 userId: request.body.userId,
                 item: request.body.item,
-                quantity: request.body.quantity || 1,
+                quantity: request.body.quantity,
                 amount: request.body.amount,
-                currency: request.body.currency || 'USD',
+                currency: request.body.currency,
                 status: OrderStatus.PENDING,
                 createdAt: new Date().toISOString(),
                 shippingAddress: request.body.shippingAddress,
