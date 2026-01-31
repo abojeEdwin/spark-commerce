@@ -25,7 +25,7 @@ async function orderRoutes(fastify) {
         }
     }
 
-    fastify.post('/orders', createOrderSchema, async (request, reply) => {
+    fastify.post('/orders', createOrderSchema, async (request, response) => {
         try {
             const orderId = uuid4()
             const correlationId = uuid4()
@@ -33,7 +33,7 @@ async function orderRoutes(fastify) {
 
             const exists = await redis.get(`order:${orderId}`)
             if (exists) {
-                return reply.code(409).send({ error: 'Duplicate order' })
+                return response.code(409).send({ error: 'Duplicate order' })
             }
             const payload = {
                 orderId,
@@ -65,7 +65,6 @@ async function orderRoutes(fastify) {
                     correlationId: correlationId
                 }
             )
-
             return reply.code(202).send({ orderId, status: OrderStatus.PENDING, correlationId })
         } catch (error) {
             console.error('Error in POST /orders:', error)
