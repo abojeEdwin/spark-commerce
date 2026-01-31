@@ -65,10 +65,10 @@ async function orderRoutes(fastify) {
                     correlationId: correlationId
                 }
             )
-            return reply.code(202).send({ orderId, status: OrderStatus.PENDING, correlationId })
+            return response.code(202).send({ orderId, status: OrderStatus.PENDING, correlationId })
         } catch (error) {
             console.error('Error in POST /orders:', error)
-            return reply.code(500).send({ error: error.message, stack: error.stack })
+            return response.code(500).send({ error: error.message, stack: error.stack })
         }
     })
 

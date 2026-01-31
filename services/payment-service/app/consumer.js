@@ -8,6 +8,7 @@ module.exports = (channel) => {
 
         try {
             const content = JSON.parse(msg.content.toString())
+            logger.info(content);
             const headers = msg.properties.headers || {}
             const retryCount = headers['x-retry-count'] || 0
             const correlationId = msg.properties.correlationId
